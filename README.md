@@ -100,13 +100,13 @@ The launcher checks locations in this order:
 The launcher first checks:
 
 ```text
-$HOME/.dhruv_tl
+$HOME/.dhruv_tool_set_path
 ```
 
 For a user named `dhruv`, this normally means:
 
 ```text
-/home/dhruv/.dhruv_tl
+/home/dhruv/.dhruv_tool_set_path
 ```
 
 If the file exists and contains a valid path, the launcher runs that Python file immediately.
@@ -227,13 +227,13 @@ the path is saved.
 The launcher stores the selected path in:
 
 ```text
-$HOME/.dhruv_tl
+$HOME/.dhruv_tool_set_path
 ```
 
 For example:
 
 ```text
-/home/dhruv/.dhruv_tl
+/home/dhruv/.dhruv_tool_set_path
 ```
 
 The file contains only one line:
@@ -250,14 +250,14 @@ It is just a text file containing the path to the Python application.
 
 ---
 
-# Why Is `.dhruv_tl` Hidden?
+# Why Is `.dhruv_tool_set_path` Hidden?
 
 On Linux and Unix-like systems, files beginning with `.` are conventionally hidden.
 
 Therefore:
 
 ```text
-.dhruv_tl
+.dhruv_tool_set_path
 ```
 
 will normally not appear with:
@@ -277,7 +277,7 @@ to see it.
 You can also inspect the saved path with:
 
 ```bash
-cat ~/.dhruv_tl
+cat ~/.dhruv_tool_set_path
 ```
 
 Example:
@@ -515,7 +515,7 @@ y
 The launcher creates:
 
 ```text
-/home/dhruv/.dhruv_tl
+/home/dhruv/.dhruv_tool_set_path
 ```
 
 with:
@@ -539,7 +539,7 @@ dhruv
 the launcher checks:
 
 ```text
-/home/dhruv/.dhruv_tl
+/home/dhruv/.dhruv_tool_set_path
 ```
 
 and reads:
@@ -579,7 +579,7 @@ The launcher checks the stored path:
 If it doesn't exist anymore, the launcher removes the old stored path:
 
 ```text
-/home/dhruv/.dhruv_tl
+/home/dhruv/.dhruv_tool_set_path
 ```
 
 It then searches `$HOME` again.
@@ -599,7 +599,7 @@ you can choose to save the new path.
 To forget the saved location:
 
 ```bash
-rm ~/.dhruv_tl
+rm ~/.dhruv_tool_set_path
 ```
 
 The next time you run:
@@ -613,7 +613,7 @@ the launcher will search again.
 You can check whether the file exists:
 
 ```bash
-ls -la ~/.dhruv_tl
+ls -la ~/.dhruv_tool_set_path
 ```
 
 ---
@@ -623,7 +623,7 @@ ls -la ~/.dhruv_tl
 Use:
 
 ```bash
-cat ~/.dhruv_tl
+cat ~/.dhruv_tool_set_path
 ```
 
 Example:
@@ -635,7 +635,7 @@ Example:
 If the file doesn't exist:
 
 ```text
-cat: /home/dhruv/.dhruv_tl: No such file or directory
+cat: /home/dhruv/.dhruv_tool_set_path: No such file or directory
 ```
 
 then no path has been saved yet.
@@ -711,7 +711,7 @@ Do not save a path unless you trust the Python file.
 The stored file:
 
 ```text
-~/.dhruv_tl
+~/.dhruv_tool_set_path
 ```
 
 contains only a path. It does not contain the Python program itself.
@@ -772,7 +772,7 @@ This separation means the launcher does not need to know what the Python program
                     dhruv
                       │
                       ▼
-             Check ~/.dhruv_tl
+             Check ~/.dhruv_tool_set_path
                       │
              ┌────────┴────────┐
              │                 │
@@ -796,7 +796,7 @@ This separation means the launcher does not need to know what the Python program
                          Ask to store
                               │
                               ▼
-                       ~/.dhruv_tl
+                       ~/.dhruv_tool_set_path
                               │
                               ▼
                        Run Python file
@@ -810,7 +810,7 @@ The main variables are at the beginning of the script:
 
 ```sh
 TARGET_FILE="dhruv_tool_set.py"
-STORE_FILE="$HOME/.dhruv_tl"
+STORE_FILE="$HOME/.dhruv_tool_set_path"
 BASE_DIR="${1:-$PWD}"
 SEARCH_ROOT="$HOME"
 ```
@@ -828,7 +828,7 @@ TARGET_FILE="dhruv_tool_set.py"
 The file used to remember the selected Python path:
 
 ```sh
-STORE_FILE="$HOME/.dhruv_tl"
+STORE_FILE="$HOME/.dhruv_tool_set_path"
 ```
 
 ## `BASE_DIR`
@@ -890,19 +890,19 @@ find "$HOME" -name "dhruv_tool_set.py" 2>/dev/null
 Check:
 
 ```bash
-cat ~/.dhruv_tl
+cat ~/.dhruv_tool_set_path
 ```
 
 Then check whether that file still exists:
 
 ```bash
-ls -l "$(cat ~/.dhruv_tl)"
+ls -l "$(cat ~/.dhruv_tool_set_path)"
 ```
 
 If the path is invalid, remove the stored file:
 
 ```bash
-rm ~/.dhruv_tl
+rm ~/.dhruv_tool_set_path
 ```
 
 and run the launcher again.
@@ -960,7 +960,7 @@ If Python 3 is not installed or is not available as `python3`, install/configure
 To completely reset the launcher's remembered location:
 
 ```bash
-rm -f ~/.dhruv_tl
+rm -f ~/.dhruv_tool_set_path
 ```
 
 The launcher will behave as if it has never saved a path.
@@ -974,7 +974,7 @@ A possible final setup:
 ```text
 /home/dhruv/
 │
-├── .dhruv_tl
+├── .dhruv_tool_set_path
 │
 ├── .local/
 │   └── bin/
@@ -1002,7 +1002,7 @@ is the actual Python application.
 The hidden file:
 
 ```text
-~/.dhruv_tl
+~/.dhruv_tool_set_path
 ```
 
 contains:
@@ -1035,7 +1035,7 @@ The launcher itself does not store or modify the Python application. It only rem
 The remembered path is stored in:
 
 ```text
-~/.dhruv_tl
+~/.dhruv_tool_set_path
 ```
 
 and can be inspected or removed at any time.
