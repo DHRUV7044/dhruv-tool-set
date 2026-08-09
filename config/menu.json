@@ -1,0 +1,31 @@
+{
+    "categories": [
+        {
+            "name": "Media",
+            "applications": [
+                {
+                    "name": "VLC",
+                    "runner": "vlc/vlc.sh"
+                }
+            ]
+        },
+        {
+            "name": "Communication",
+            "applications": [
+                {
+                    "name": "WhatsApp",
+                    "runner": "whatsapp/whatsapp.sh"
+                }
+            ]
+        },
+        {
+            "name": "Development",
+            "applications": [
+                {
+                    "name": "Visual Studio Code",
+                    "runner": "vscode/vscode.sh"
+                }
+            ]
+        }
+    ]
+}
