@@ -37,6 +37,34 @@
                             "runner": "vivado/2025.2.sh"
                         }
                     ]
+                },
+                {
+                    "name": "JetBrains IDE",
+                    "versions": [
+                        {
+                            "name": "android-studio",
+                            "runner": "jetbrains/studio.sh"
+                        },
+                        {
+                            "name": "intellij-idea",
+                            "runner": "jetbrains/idea.sh"
+                        },
+                        {
+                            "name": "pycharm",
+                            "runner": "jetbrains/pycharm.sh"
+                        },
+                        {
+                            "name": "webstorm",
+                            "runner": "jetbrains/webstorm.sh"
+                        },{
+                            "name": "rider",
+                            "runner": "jetbrains/rider.sh"
+                        },
+                        {
+                            "name": "clion",
+                            "runner": "jetbrains/clion.sh"
+                        }
+                    ]
                 }
             ]
         },

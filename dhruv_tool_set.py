@@ -1,6 +1,7 @@
 from pathlib import Path
 import json
 import os
+import shutil
 import subprocess
 
 
@@ -22,6 +23,23 @@ class ExitApplication(Exception):
 
 
 # ============================================================
+# Terminal colors
+# ============================================================
+
+RESET = "\033[0m"
+
+BOLD = "\033[1m"
+DIM = "\033[2m"
+
+CYAN = "\033[36m"
+BLUE = "\033[34m"
+GREEN = "\033[32m"
+YELLOW = "\033[33m"
+RED = "\033[31m"
+WHITE = "\033[37m"
+
+
+# ============================================================
 # Configuration
 # ============================================================
 
@@ -38,9 +56,32 @@ def clear_screen() -> None:
     os.system("clear")
 
 
+def get_terminal_width() -> int:
+    return shutil.get_terminal_size((80, 24)).columns
+
+
+# ============================================================
+# Header
+# ============================================================
+
 def print_header() -> None:
-    print("Welcome to Dhruv Tool Set")
-    print("────────────────────────────────")
+    width = min(get_terminal_width(), 80)
+
+    title = "D H R U V   T O O L   S E T"
+    subtitle = "Terminal Tool Launcher"
+
+    print(f"{CYAN}╔{'═' * (width - 2)}╗{RESET}")
+    print(
+        f"{CYAN}║{RESET}"
+        f"{BOLD}{WHITE}{title:^{width - 2}}{RESET}"
+        f"{CYAN}║{RESET}"
+    )
+    print(
+        f"{CYAN}║{RESET}"
+        f"{DIM}{subtitle:^{width - 2}}{RESET}"
+        f"{CYAN}║{RESET}"
+    )
+    print(f"{CYAN}╚{'═' * (width - 2)}╝{RESET}")
     print()
 
 
@@ -49,40 +90,67 @@ def print_header() -> None:
 # ============================================================
 
 def get_choice() -> str:
-    return input("Enter: ").strip()
+    return input(f"{GREEN}❯{RESET} ").strip()
 
 
 # ============================================================
 # Menu
 # ============================================================
 
+def print_menu_box(title: str, items: list[dict]) -> None:
+    width = min(get_terminal_width(), 80)
+    inner_width = width - 4
+
+    title_text = f" {title.upper()} "
+
+    if len(title_text) > inner_width:
+        title_text = f" {title.upper()[:inner_width - 2]} "
+
+    remaining = inner_width - len(title_text)
+
+    print(
+        f"{BLUE}┌─{title_text}"
+        f"{'─' * max(0, remaining)}┐{RESET}"
+    )
+
+    print(f"{BLUE}│{RESET}{' ' * (width - 2)}{BLUE}│{RESET}")
+
+    for index, item in enumerate(items, start=1):
+        number = str(index)
+        name = item["name"]
+
+        print(
+            f"{BLUE}│{RESET}"
+            f"  {YELLOW}{number:<3}{RESET}"
+            f"{WHITE}{name}{RESET}"
+            f"{' ' * max(0, width - 7 - len(number) - len(name))}"
+            f"{BLUE}│{RESET}"
+        )
+
+    print(f"{BLUE}│{RESET}{' ' * (width - 2)}{BLUE}│{RESET}")
+    print(f"{BLUE}└{'─' * (width - 2)}┘{RESET}")
+    print()
+
+
 def show_main_menu(categories: list[dict]) -> None:
     clear_screen()
     print_header()
 
-    print("MAIN MENU")
-    print("────────────────────────")
+    print_menu_box("Main Menu", categories)
 
-    for index, category in enumerate(categories, start=1):
-        print(f"{index}  {category['name']}")
-
+    print(f"  {DIM}exit{RESET}  Exit")
     print()
-    print("exit  Exit")
 
 
 def show_menu(title: str, items: list[dict]) -> None:
     clear_screen()
     print_header()
 
-    print(title.upper())
-    print("────────────────────────")
+    print_menu_box(title, items)
 
-    for index, item in enumerate(items, start=1):
-        print(f"{index}  {item['name']}")
-
+    print(f"  {DIM}0{RESET}     Back")
+    print(f"  {DIM}exit{RESET}  Exit")
     print()
-    print("0     Back")
-    print("exit  Exit")
 
 
 # ============================================================
@@ -94,22 +162,26 @@ def run_runner(runner: str, program_name: str) -> None:
 
     if not runner_path.is_file():
         print()
-        print(f"Runner not found: {runner_path}")
-        input("\nPress Enter to continue...")
+        print(f"{RED}✗ Runner not found{RESET}")
+        print()
+        print(f"  {DIM}{runner_path}{RESET}")
+        input(f"\n{DIM}Press Enter to continue...{RESET}")
         return
 
     if not os.access(runner_path, os.X_OK):
         print()
-        print(f"Runner is not executable: {runner_path}")
-        input("\nPress Enter to continue...")
+        print(f"{RED}✗ Runner is not executable{RESET}")
+        print()
+        print(f"  {DIM}{runner_path}{RESET}")
+        input(f"\n{DIM}Press Enter to continue...{RESET}")
         return
 
     result = subprocess.run([str(runner_path)])
 
     if result.returncode != 0:
         print()
-        print(f"Failed to start {program_name}.")
-        input("\nPress Enter to continue...")
+        print(f"{RED}✗ Failed to start {program_name}{RESET}")
+        input(f"\n{DIM}Press Enter to continue...{RESET}")
 
 
 # ============================================================
@@ -120,7 +192,7 @@ def launch_application(application: dict) -> None:
     versions = application.get("versions", [])
 
     # --------------------------------------------------------
-    # Application has no version list
+    # No version list
     # --------------------------------------------------------
 
     if not versions:
@@ -131,7 +203,7 @@ def launch_application(application: dict) -> None:
         return
 
     # --------------------------------------------------------
-    # Application has exactly one version
+    # Single version
     # --------------------------------------------------------
 
     if len(versions) == 1:
@@ -144,7 +216,7 @@ def launch_application(application: dict) -> None:
         return
 
     # --------------------------------------------------------
-    # Application has multiple versions
+    # Multiple versions
     # --------------------------------------------------------
 
     while True:
@@ -239,8 +311,8 @@ def main() -> None:
     except ExitApplication:
         clear_screen()
         print_header()
-        print("Goodbye.")
-        print("Exiting Dhruv Tool Set...")
+        print(f"{GREEN}✓ Goodbye.{RESET}")
+        print(f"{DIM}Exiting Dhruv Tool Set...{RESET}")
 
 
 # ============================================================
