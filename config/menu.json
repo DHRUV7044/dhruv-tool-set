@@ -32,7 +32,7 @@
                             "name": "2024.2",
                             "runner": "vivado/2024.2.sh"
                         },
-                                                {
+                        {
                             "name": "2025.2",
                             "runner": "vivado/2025.2.sh"
                         }
@@ -56,7 +56,8 @@
                         {
                             "name": "webstorm",
                             "runner": "jetbrains/webstorm.sh"
-                        },{
+                        },
+                        {
                             "name": "rider",
                             "runner": "jetbrains/rider.sh"
                         },
@@ -70,18 +71,112 @@
         },
         {
             "name": "Browser",
-            "applications" : [
+            "applications": [
                 {
-                    "name" : "google-chrome",
-                    "runner" : "browser/chrome.sh"
+                    "name": "google-chrome",
+                    "runner": "browser/chrome.sh"
                 },
                 {
-                    "name" : "brave",
-                    "runner" : "browser/brave.sh"
+                    "name": "brave",
+                    "runner": "browser/brave.sh"
                 },
                 {
-                    "name" : "firefox",
-                    "runner" : "browser/firefox.sh"
+                    "name": "firefox",
+                    "runner": "browser/firefox.sh"
+                }
+            ]
+        },
+        {
+            "name": "Steam",
+            "applications": [
+                {
+                    "name": "Steam",
+                    "runner": "steam/steam.sh"
+                },
+                {
+                    "name": "Grab Game",
+                    "runner": "steam/game.sh",
+                    "app_id": "REPLACE"
+                },
+                {
+                    "name": "Goose Goose Duck",
+                    "runner": "steam/game.sh",
+                    "app_id": "1568590"
+                },
+                {
+                    "name": "Opus Magnum",
+                    "runner": "steam/game.sh",
+                    "app_id": "558990"
+                },
+                {
+                    "name": "The Obit Factory",
+                    "runner": "steam/game.sh",
+                    "app_id": "REPLACE"
+                },
+                {
+                    "name": "Code: Terratorm Demo",
+                    "runner": "steam/game.sh",
+                    "app_id": "REPLACE"
+                },
+                {
+                    "name": "Bongo Cat",
+                    "runner": "steam/game.sh",
+                    "app_id": "3419430"
+                },
+                {
+                    "name": "The Farmer Was Replaced",
+                    "runner": "steam/game.sh",
+                    "app_id": "2060160"
+                },
+                {
+                    "name": "EXAPUNKS",
+                    "runner": "steam/game.sh",
+                    "app_id": "716490"
+                },
+                {
+                    "name": "Robot Unlock",
+                    "runner": "steam/game.sh",
+                    "app_id": "3318050"
+                },
+                {
+                    "name": "ABI-DOS",
+                    "runner": "steam/game.sh",
+                    "app_id": "2180700"
+                },
+                {
+                    "name": "SpaceChem",
+                    "runner": "steam/game.sh",
+                    "app_id": "92800"
+                },
+                {
+                    "name": "SHENZHEN I/O",
+                    "runner": "steam/game.sh",
+                    "app_id": "504210"
+                },
+                {
+                    "name": "TIS-100",
+                    "runner": "steam/game.sh",
+                    "app_id": "370360"
+                },
+                {
+                    "name": "Infinifactory",
+                    "runner": "steam/game.sh",
+                    "app_id": "300570"
+                },
+                {
+                    "name": "Last Call BBS",
+                    "runner": "steam/game.sh",
+                    "app_id": "1511780"
+                },
+                {
+                    "name": "MOLEK-SYNTEZ",
+                    "runner": "steam/game.sh",
+                    "app_id": "1168880"
+                },
+                {
+                    "name": "GRIP XR Demo",
+                    "runner": "steam/game.sh",
+                    "app_id": "4475750"
                 }
             ]
         }

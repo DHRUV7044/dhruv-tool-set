@@ -71,16 +71,19 @@ def print_header() -> None:
     subtitle = "Terminal Tool Launcher"
 
     print(f"{CYAN}╔{'═' * (width - 2)}╗{RESET}")
+
     print(
         f"{CYAN}║{RESET}"
         f"{BOLD}{WHITE}{title:^{width - 2}}{RESET}"
         f"{CYAN}║{RESET}"
     )
+
     print(
         f"{CYAN}║{RESET}"
         f"{DIM}{subtitle:^{width - 2}}{RESET}"
         f"{CYAN}║{RESET}"
     )
+
     print(f"{CYAN}╚{'═' * (width - 2)}╝{RESET}")
     print()
 
@@ -113,22 +116,39 @@ def print_menu_box(title: str, items: list[dict]) -> None:
         f"{'─' * max(0, remaining)}┐{RESET}"
     )
 
-    print(f"{BLUE}│{RESET}{' ' * (width - 2)}{BLUE}│{RESET}")
+    print(
+        f"{BLUE}│{RESET}"
+        f"{' ' * (width - 2)}"
+        f"{BLUE}│{RESET}"
+    )
 
     for index, item in enumerate(items, start=1):
         number = str(index)
         name = item["name"]
 
+        padding = max(
+            0,
+            width - 7 - len(number) - len(name)
+        )
+
         print(
             f"{BLUE}│{RESET}"
             f"  {YELLOW}{number:<3}{RESET}"
             f"{WHITE}{name}{RESET}"
-            f"{' ' * max(0, width - 7 - len(number) - len(name))}"
+            f"{' ' * padding}"
             f"{BLUE}│{RESET}"
         )
 
-    print(f"{BLUE}│{RESET}{' ' * (width - 2)}{BLUE}│{RESET}")
-    print(f"{BLUE}└{'─' * (width - 2)}┘{RESET}")
+    print(
+        f"{BLUE}│{RESET}"
+        f"{' ' * (width - 2)}"
+        f"{BLUE}│{RESET}"
+    )
+
+    print(
+        f"{BLUE}└{'─' * (width - 2)}┘{RESET}"
+    )
+
     print()
 
 
@@ -154,10 +174,51 @@ def show_menu(title: str, items: list[dict]) -> None:
 
 
 # ============================================================
+# Runner environment
+# ============================================================
+
+def build_runner_environment(
+    *configs: dict
+) -> dict[str, str]:
+    """
+    Convert runner configuration from JSON into environment
+    variables for the runner.
+
+    Example:
+
+        "app_id": "730"
+
+    becomes:
+
+        DTS_APP_ID=730
+    """
+
+    environment = os.environ.copy()
+
+    for config in configs:
+        for key, value in config.items():
+
+            # Only pass simple values to runners.
+            if isinstance(value, (dict, list)):
+                continue
+
+            environment_key = f"DTS_{key.upper()}"
+
+            environment[environment_key] = str(value)
+
+    return environment
+
+
+# ============================================================
 # Runner
 # ============================================================
 
-def run_runner(runner: str, program_name: str) -> None:
+def run_runner(
+    runner: str,
+    program_name: str,
+    *configs: dict
+) -> None:
+
     runner_path = RUNNERS_DIR / runner
 
     if not runner_path.is_file():
@@ -165,7 +226,11 @@ def run_runner(runner: str, program_name: str) -> None:
         print(f"{RED}✗ Runner not found{RESET}")
         print()
         print(f"  {DIM}{runner_path}{RESET}")
-        input(f"\n{DIM}Press Enter to continue...{RESET}")
+
+        input(
+            f"\n{DIM}Press Enter to continue...{RESET}"
+        )
+
         return
 
     if not os.access(runner_path, os.X_OK):
@@ -173,15 +238,30 @@ def run_runner(runner: str, program_name: str) -> None:
         print(f"{RED}✗ Runner is not executable{RESET}")
         print()
         print(f"  {DIM}{runner_path}{RESET}")
-        input(f"\n{DIM}Press Enter to continue...{RESET}")
+
+        input(
+            f"\n{DIM}Press Enter to continue...{RESET}"
+        )
+
         return
 
-    result = subprocess.run([str(runner_path)])
+    environment = build_runner_environment(*configs)
+
+    result = subprocess.run(
+        [str(runner_path)],
+        env=environment
+    )
 
     if result.returncode != 0:
         print()
-        print(f"{RED}✗ Failed to start {program_name}{RESET}")
-        input(f"\n{DIM}Press Enter to continue...{RESET}")
+        print(
+            f"{RED}✗ Failed to start "
+            f"{program_name}{RESET}"
+        )
+
+        input(
+            f"\n{DIM}Press Enter to continue...{RESET}"
+        )
 
 
 # ============================================================
@@ -198,8 +278,10 @@ def launch_application(application: dict) -> None:
     if not versions:
         run_runner(
             application["runner"],
-            application["name"]
+            application["name"],
+            application
         )
+
         return
 
     # --------------------------------------------------------
@@ -211,8 +293,11 @@ def launch_application(application: dict) -> None:
 
         run_runner(
             version["runner"],
-            f"{application['name']} {version['name']}"
+            f"{application['name']} {version['name']}",
+            application,
+            version
         )
+
         return
 
     # --------------------------------------------------------
@@ -220,7 +305,10 @@ def launch_application(application: dict) -> None:
     # --------------------------------------------------------
 
     while True:
-        show_menu(application["name"], versions)
+        show_menu(
+            application["name"],
+            versions
+        )
 
         choice = get_choice()
 
@@ -242,7 +330,9 @@ def launch_application(application: dict) -> None:
 
         run_runner(
             version["runner"],
-            f"{application['name']} {version['name']}"
+            f"{application['name']} {version['name']}",
+            application,
+            version
         )
 
         return
@@ -253,10 +343,16 @@ def launch_application(application: dict) -> None:
 # ============================================================
 
 def open_category(category: dict) -> None:
-    applications = category.get("applications", [])
+    applications = category.get(
+        "applications",
+        []
+    )
 
     while True:
-        show_menu(category["name"], applications)
+        show_menu(
+            category["name"],
+            applications
+        )
 
         choice = get_choice()
 
@@ -285,7 +381,10 @@ def open_category(category: dict) -> None:
 
 def main() -> None:
     config = load_config()
-    categories = config.get("categories", [])
+    categories = config.get(
+        "categories",
+        []
+    )
 
     try:
         while True:
@@ -311,8 +410,11 @@ def main() -> None:
     except ExitApplication:
         clear_screen()
         print_header()
+
         print(f"{GREEN}✓ Goodbye.{RESET}")
-        print(f"{DIM}Exiting Dhruv Tool Set...{RESET}")
+        print(
+            f"{DIM}Exiting Dhruv Tool Set...{RESET}"
+        )
 
 
 # ============================================================
