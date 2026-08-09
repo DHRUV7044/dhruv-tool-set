@@ -35,7 +35,7 @@ program_command="google-chrome"
 # Check program
 # ============================================================
 
-if [ ! -x "$program_command" ]; then
+if [ ! -v "$program_command" ]; then
     printf '%s\n' "$program_name is not installed or not executable."
     exit 1
 fi

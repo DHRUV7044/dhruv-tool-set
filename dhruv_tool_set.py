@@ -335,8 +335,6 @@ def launch_application(application: dict) -> None:
             version
         )
 
-        return
-
 
 # ============================================================
 # Category
