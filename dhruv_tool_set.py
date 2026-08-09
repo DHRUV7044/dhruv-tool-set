@@ -78,7 +78,7 @@ def show_menu(title: str, items: list[dict]) -> None:
     print("────────────────────────")
 
     for index, item in enumerate(items, start=1):
-        print(f"{index:02d}  {item['name']}")
+        print(f"{index}  {item['name']}")
 
     print()
     print("0     Back")

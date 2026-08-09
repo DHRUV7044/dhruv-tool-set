@@ -24,6 +24,36 @@
                 {
                     "name": "Visual Studio Code",
                     "runner": "vscode/vscode.sh"
+                },
+                {
+                    "name": "Vivado",
+                    "versions": [
+                        {
+                            "name": "2024.2",
+                            "runner": "vivado/2024.2.sh"
+                        },
+                                                {
+                            "name": "2025.2",
+                            "runner": "vivado/2025.2.sh"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "Browser",
+            "applications" : [
+                {
+                    "name" : "google-chrome",
+                    "runner" : "browser/chrome.sh"
+                },
+                {
+                    "name" : "brave",
+                    "runner" : "browser/brave.sh"
+                },
+                {
+                    "name" : "firefox",
+                    "runner" : "browser/firefox.sh"
                 }
             ]
         }
