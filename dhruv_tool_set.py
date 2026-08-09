@@ -4,13 +4,16 @@ import os
 import shutil
 import subprocess
 
+
 # ============================================================
 # Paths
 # ============================================================
 
 ROOT = Path(__file__).resolve().parent
+
 CONFIG_FILE = ROOT / "config" / "menu.json"
 RUNNERS_DIR = ROOT / "runners"
+
 
 # ============================================================
 # Application
@@ -19,6 +22,7 @@ RUNNERS_DIR = ROOT / "runners"
 APP_NAME = "D H R U V   T O O L   S E T"
 APP_SUBTITLE = "Terminal Tool Launcher"
 APP_VERSION = "v1.0"
+
 
 # ============================================================
 # Application exit
@@ -45,6 +49,7 @@ YELLOW = "\033[33m"
 RED = "\033[31m"
 WHITE = "\033[37m"
 
+
 # ============================================================
 # Terminal symbols
 # ============================================================
@@ -56,13 +61,17 @@ BOX_BOTTOM_RIGHT = "╯"
 BOX_HORIZONTAL = "─"
 BOX_VERTICAL = "│"
 
+
 # ============================================================
 # Configuration
 # ============================================================
 
 
 def load_config() -> dict:
-    with CONFIG_FILE.open("r", encoding="utf-8") as file:
+    with CONFIG_FILE.open(
+        "r",
+        encoding="utf-8"
+    ) as file:
         return json.load(file)
 
 
@@ -76,11 +85,16 @@ def clear_screen() -> None:
 
 
 def get_terminal_width() -> int:
-    return shutil.get_terminal_size((80, 24)).columns
+    return shutil.get_terminal_size(
+        (80, 24)
+    ).columns
 
 
 def get_ui_width() -> int:
-    return min(max(get_terminal_width(), 60), 100)
+    return min(
+        max(get_terminal_width(), 60),
+        100
+    )
 
 
 # ============================================================
@@ -91,10 +105,6 @@ def get_ui_width() -> int:
 def print_header() -> None:
     width = get_ui_width()
 
-    title = APP_NAME
-    subtitle = APP_SUBTITLE
-    version = APP_VERSION
-
     print(
         f"{CYAN}{BOX_TOP_LEFT}"
         f"{BOX_HORIZONTAL * (width - 2)}"
@@ -103,19 +113,25 @@ def print_header() -> None:
 
     print(
         f"{CYAN}{BOX_VERTICAL}{RESET}"
-        f"{BOLD}{WHITE}{title:^{width - 2}}{RESET}"
+        f"{BOLD}{WHITE}"
+        f"{APP_NAME:^{width - 2}}"
+        f"{RESET}"
         f"{CYAN}{BOX_VERTICAL}{RESET}"
     )
 
     print(
         f"{CYAN}{BOX_VERTICAL}{RESET}"
-        f"{DIM}{subtitle:^{width - 2}}{RESET}"
+        f"{DIM}"
+        f"{APP_SUBTITLE:^{width - 2}}"
+        f"{RESET}"
         f"{CYAN}{BOX_VERTICAL}{RESET}"
     )
 
     print(
         f"{CYAN}{BOX_VERTICAL}{RESET}"
-        f"{DIM}{version:^{width - 2}}{RESET}"
+        f"{DIM}"
+        f"{APP_VERSION:^{width - 2}}"
+        f"{RESET}"
         f"{CYAN}{BOX_VERTICAL}{RESET}"
     )
 
@@ -133,7 +149,10 @@ def print_header() -> None:
 # ============================================================
 
 
-def print_breadcrumb(path: list[str]) -> None:
+def print_breadcrumb(
+    path: list[str]
+) -> None:
+
     if not path:
         return
 
@@ -141,12 +160,21 @@ def print_breadcrumb(path: list[str]) -> None:
         f"{DIM}Home{RESET}"
     ]
 
-    for item in path:
-        parts.append(
-            f"{CYAN}{item}{RESET}"
-        )
+    for index, item in enumerate(path):
 
-    breadcrumb = f" {DIM}›{RESET} ".join(parts)
+        if index == len(path) - 1:
+            parts.append(
+                f"{BOLD}{WHITE}{item}{RESET}"
+            )
+        else:
+            parts.append(
+                f"{DIM}{item}{RESET}"
+            )
+
+    breadcrumb = (
+        f" {DIM}›{RESET} "
+        .join(parts)
+    )
 
     print(f"  {breadcrumb}")
     print()
@@ -164,7 +192,28 @@ def get_choice() -> str:
 
 
 # ============================================================
-# Menu
+# Menu item type
+# ============================================================
+
+
+def get_item_indicator(
+    item: dict
+) -> str:
+
+    if item.get("versions"):
+        return f"{CYAN}›{RESET}"
+
+    if item.get("applications"):
+        return f"{CYAN}›{RESET}"
+
+    if item.get("groups"):
+        return f"{CYAN}›{RESET}"
+
+    return f"{DIM}●{RESET}"
+
+
+# ============================================================
+# Menu box
 # ============================================================
 
 
@@ -174,24 +223,31 @@ def print_menu_box(
 ) -> None:
 
     width = get_ui_width()
-    inner_width = width - 2
 
     title_text = f" {title.upper()} "
 
-    if len(title_text) > inner_width - 2:
+    max_title_width = width - 6
+
+    if len(title_text) > max_title_width:
         title_text = (
-            f" {title.upper()[:inner_width - 4]}… "
+            f" {title.upper()[:max_title_width - 3]}"
+            f"… "
         )
 
-    remaining = inner_width - len(title_text) - 1
+    remaining = (
+        width
+        - 3
+        - len(title_text)
+    )
 
     # --------------------------------------------------------
-    # Top
+    # Top border
     # --------------------------------------------------------
 
     print(
         f"{BLUE}{BOX_TOP_LEFT}"
-        f"{BOX_HORIZONTAL}{title_text}"
+        f"{BOX_HORIZONTAL}"
+        f"{title_text}"
         f"{BOX_HORIZONTAL * max(0, remaining)}"
         f"{BOX_TOP_RIGHT}{RESET}"
     )
@@ -207,37 +263,60 @@ def print_menu_box(
     )
 
     # --------------------------------------------------------
-    # Items
+    # Menu items
     # --------------------------------------------------------
 
-    for index, item in enumerate(items, start=1):
+    for index, item in enumerate(
+        items,
+        start=1
+    ):
 
         number = str(index)
         name = item["name"]
+        indicator = get_item_indicator(item)
 
-        number_text = f"{number:>3}"
+        # Leave room for:
+        #
+        #   │   1   Name                 ●   │
+        #
 
-        available_name_width = width - 11
+        available_name_width = width - 16
 
         if len(name) > available_name_width:
+
             name = (
                 name[:available_name_width - 1]
                 + "…"
             )
 
+        number_text = (
+            f"{YELLOW}{number:>3}{RESET}"
+        )
+
+        indicator_text = indicator
+
+        used_width = (
+            3
+            + 3
+            + len(name)
+            + 3
+            + 1
+        )
+
         padding = max(
             1,
-            width
-            - 8
-            - len(number)
-            - len(name)
+            width - 2 - used_width
         )
 
         print(
             f"{BLUE}{BOX_VERTICAL}{RESET}"
-            f"   {YELLOW}{number_text}{RESET}"
-            f"  {WHITE}{name}{RESET}"
+            f"   "
+            f"{number_text}"
+            f"   "
+            f"{WHITE}{name}{RESET}"
             f"{' ' * padding}"
+            f"{indicator_text}"
+            f"  "
             f"{BLUE}{BOX_VERTICAL}{RESET}"
         )
 
@@ -252,7 +331,7 @@ def print_menu_box(
     )
 
     # --------------------------------------------------------
-    # Bottom
+    # Bottom border
     # --------------------------------------------------------
 
     print(
@@ -274,6 +353,7 @@ def show_main_menu(
 ) -> None:
 
     clear_screen()
+
     print_header()
 
     print_menu_box(
@@ -283,7 +363,7 @@ def show_main_menu(
 
     print(
         f"  {DIM}exit{RESET}"
-        f"  Exit application"
+        f"  Exit"
     )
 
     print()
@@ -301,6 +381,7 @@ def show_menu(
 ) -> None:
 
     clear_screen()
+
     print_header()
 
     if path:
@@ -318,7 +399,7 @@ def show_menu(
 
     print(
         f"  {DIM}exit{RESET}"
-        f"  Exit application"
+        f"  Exit"
     )
 
     print()
@@ -339,15 +420,22 @@ def build_runner_environment(
 
         for key, value in config.items():
 
-            # Do not pass nested structures.
-            if isinstance(value, (dict, list)):
+            # Nested JSON objects and lists are not passed
+            # directly to runner scripts.
+
+            if isinstance(
+                value,
+                (dict, list)
+            ):
                 continue
 
             environment_key = (
                 f"DTS_{key.upper()}"
             )
 
-            environment[environment_key] = str(value)
+            environment[environment_key] = str(
+                value
+            )
 
     return environment
 
@@ -363,10 +451,12 @@ def run_runner(
     *configs: dict
 ) -> None:
 
-    runner_path = RUNNERS_DIR / runner
+    runner_path = (
+        RUNNERS_DIR / runner
+    )
 
     # --------------------------------------------------------
-    # Runner missing
+    # Runner does not exist
     # --------------------------------------------------------
 
     if not runner_path.is_file():
@@ -382,7 +472,9 @@ def run_runner(
         print()
 
         print(
-            f"  {DIM}{runner_path}{RESET}"
+            f"  {DIM}"
+            f"{runner_path}"
+            f"{RESET}"
         )
 
         input(
@@ -394,7 +486,7 @@ def run_runner(
         return
 
     # --------------------------------------------------------
-    # Runner not executable
+    # Runner is not executable
     # --------------------------------------------------------
 
     if not os.access(
@@ -413,7 +505,9 @@ def run_runner(
         print()
 
         print(
-            f"  {DIM}{runner_path}{RESET}"
+            f"  {DIM}"
+            f"{runner_path}"
+            f"{RESET}"
         )
 
         input(
@@ -425,15 +519,17 @@ def run_runner(
         return
 
     # --------------------------------------------------------
-    # Environment
+    # Build environment
     # --------------------------------------------------------
 
-    environment = build_runner_environment(
-        *configs
+    environment = (
+        build_runner_environment(
+            *configs
+        )
     )
 
     # --------------------------------------------------------
-    # Execute runner
+    # Run runner
     # --------------------------------------------------------
 
     result = subprocess.run(
@@ -442,7 +538,7 @@ def run_runner(
     )
 
     # --------------------------------------------------------
-    # Runner failed
+    # Runner failure
     # --------------------------------------------------------
 
     if result.returncode != 0:
@@ -486,7 +582,7 @@ def launch_application(
     )
 
     # --------------------------------------------------------
-    # No version list
+    # No versions
     # --------------------------------------------------------
 
     if not versions:
@@ -528,7 +624,9 @@ def launch_application(
         show_menu(
             application["name"],
             versions,
-            path + [application["name"]]
+            path + [
+                application["name"]
+            ]
         )
 
         choice = get_choice()
@@ -575,28 +673,44 @@ def launch_application(
             version
         )
 
+        # IMPORTANT:
+        #
+        # Do not return here.
+        #
+        # After the runner exits, remain in the
+        # version-selection menu.
+
 
 # ============================================================
-# Category
+# Group
 # ============================================================
 
 
-def open_category(
-    category: dict,
+def open_group(
+    group: dict,
     parent_path: list[str]
 ) -> None:
 
-    applications = category.get(
-        "applications",
-        []
-    )
-
     while True:
 
+        applications = group.get(
+            "applications",
+            []
+        )
+
+        groups = group.get(
+            "groups",
+            []
+        )
+
+        items = applications + groups
+
         show_menu(
-            category["name"],
-            applications,
-            parent_path + [category["name"]]
+            group["name"],
+            items,
+            parent_path + [
+                group["name"]
+            ]
         )
 
         choice = get_choice()
@@ -624,15 +738,120 @@ def open_category(
 
         index = int(choice)
 
-        if not 1 <= index <= len(applications):
+        if not 1 <= index <= len(items):
             continue
 
-        application = applications[index - 1]
+        item = items[index - 1]
 
-        launch_application(
-            application,
-            parent_path + [category["name"]]
+        # ----------------------------------------------------
+        # Nested group
+        # ----------------------------------------------------
+
+        if item in groups:
+            open_group(
+                item,
+                parent_path + [
+                    group["name"]
+                ]
+            )
+
+        # ----------------------------------------------------
+        # Application
+        # ----------------------------------------------------
+
+        else:
+            launch_application(
+                item,
+                parent_path + [
+                    group["name"]
+                ]
+            )
+
+
+# ============================================================
+# Category
+# ============================================================
+
+
+def open_category(
+    category: dict,
+    parent_path: list[str]
+) -> None:
+
+    while True:
+        applications = category.get(
+            "applications",
+            []
         )
+
+        groups = category.get(
+            "groups",
+            []
+        )
+
+        items = applications + groups
+
+        show_menu(
+            category["name"],
+            items,
+            parent_path + [
+                category["name"]
+            ]
+        )
+
+        choice = get_choice()
+
+        # ----------------------------------------------------
+        # Exit
+        # ----------------------------------------------------
+
+        if choice.lower() == "exit":
+            raise ExitApplication
+
+        # ----------------------------------------------------
+        # Back
+        # ----------------------------------------------------
+
+        if choice == "0":
+            return
+
+        # ----------------------------------------------------
+        # Invalid input
+        # ----------------------------------------------------
+
+        if not choice.isdigit():
+            continue
+
+        index = int(choice)
+
+        if not 1 <= index <= len(items):
+            continue
+
+        item = items[index - 1]
+
+        # ----------------------------------------------------
+        # Group
+        # ----------------------------------------------------
+
+        if item in groups:
+            open_group(
+                item,
+                parent_path + [
+                    category["name"]
+                ]
+            )
+
+        # ----------------------------------------------------
+        # Application
+        # ----------------------------------------------------
+
+        else:
+            launch_application(
+                item,
+                parent_path + [
+                    category["name"]
+                ]
+            )
 
 
 # ============================================================
@@ -678,7 +897,9 @@ def main() -> None:
             if not 1 <= index <= len(categories):
                 continue
 
-            category = categories[index - 1]
+            category = (
+                categories[index - 1]
+            )
 
             open_category(
                 category,
@@ -688,6 +909,7 @@ def main() -> None:
     except ExitApplication:
 
         clear_screen()
+
         print_header()
 
         print(
