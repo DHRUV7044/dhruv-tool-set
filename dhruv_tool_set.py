@@ -3,6 +3,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 
 
 # ============================================================
@@ -21,7 +22,7 @@ RUNNERS_DIR = ROOT / "runners"
 
 APP_NAME = "D H R U V   T O O L   S E T"
 APP_SUBTITLE = "Terminal Tool Launcher"
-APP_VERSION = "v1.0"
+APP_VERSION = "v1.1"
 
 
 # ============================================================
@@ -47,6 +48,7 @@ BLUE = "\033[34m"
 GREEN = "\033[32m"
 YELLOW = "\033[33m"
 RED = "\033[31m"
+MAGENTA = "\033[35m"
 WHITE = "\033[37m"
 
 
@@ -68,6 +70,13 @@ BOX_VERTICAL = "│"
 
 
 def load_config() -> dict:
+    """
+    Load the menu configuration.
+
+    Raises FileNotFoundError / json.JSONDecodeError on failure;
+    callers are responsible for presenting a friendly error.
+    """
+
     with CONFIG_FILE.open(
         "r",
         encoding="utf-8"
@@ -186,9 +195,21 @@ def print_breadcrumb(
 
 
 def get_choice() -> str:
-    return input(
-        f"{GREEN}{BOLD}❯{RESET} "
-    ).strip()
+    """
+    Read a line of input.
+
+    Ctrl+C / Ctrl+D are treated the same as typing "exit" so the
+    application never dumps a raw traceback on interruption.
+    """
+
+    try:
+        return input(
+            f"{GREEN}{BOLD}❯{RESET} "
+        ).strip()
+
+    except (KeyboardInterrupt, EOFError):
+        print()
+        raise ExitApplication
 
 
 # ============================================================
@@ -196,20 +217,48 @@ def get_choice() -> str:
 # ============================================================
 
 
+def is_container(item: dict) -> bool:
+    """
+    A container is anything that opens into another menu:
+    a category, a group, or a multi-version application.
+    """
+
+    return bool(
+        item.get("groups")
+        or item.get("applications")
+        or (
+            item.get("versions")
+            and len(item["versions"]) > 1
+        )
+    )
+
+
 def get_item_indicator(
     item: dict
 ) -> str:
 
-    if item.get("versions"):
-        return f"{CYAN}›{RESET}"
-
-    if item.get("applications"):
-        return f"{CYAN}›{RESET}"
-
-    if item.get("groups"):
+    if is_container(item):
         return f"{CYAN}›{RESET}"
 
     return f"{DIM}●{RESET}"
+
+
+def get_item_count_label(item: dict) -> str:
+    """
+    Small dim status label showing how many entries a
+    container holds, e.g. "(18)". Empty for launchable items.
+    """
+
+    if item.get("groups") or item.get("applications"):
+        count = len(item.get("groups", [])) + len(item.get("applications", []))
+        return f"{DIM}({count}){RESET}"
+
+    versions = item.get("versions")
+
+    if versions and len(versions) > 1:
+        return f"{DIM}({len(versions)}){RESET}"
+
+    return ""
 
 
 # ============================================================
@@ -263,6 +312,37 @@ def print_menu_box(
     )
 
     # --------------------------------------------------------
+    # Empty menu
+    # --------------------------------------------------------
+
+    if not items:
+
+        message = "No items here."
+
+        print(
+            f"{BLUE}{BOX_VERTICAL}{RESET}"
+            f"   {DIM}{message}"
+            f"{' ' * max(0, width - 5 - len(message))}"
+            f"{RESET}{BLUE}{BOX_VERTICAL}{RESET}"
+        )
+
+        print(
+            f"{BLUE}{BOX_VERTICAL}{RESET}"
+            f"{' ' * (width - 2)}"
+            f"{BLUE}{BOX_VERTICAL}{RESET}"
+        )
+
+        print(
+            f"{BLUE}{BOX_BOTTOM_LEFT}"
+            f"{BOX_HORIZONTAL * (width - 2)}"
+            f"{BOX_BOTTOM_RIGHT}{RESET}"
+        )
+
+        print()
+
+        return
+
+    # --------------------------------------------------------
     # Menu items
     # --------------------------------------------------------
 
@@ -274,18 +354,20 @@ def print_menu_box(
         number = str(index)
         name = item["name"]
         indicator = get_item_indicator(item)
+        count_label = get_item_count_label(item)
 
         # Leave room for:
         #
-        #   │   1   Name                 ●   │
+        #   │   1   Name            (18)   ›   │
         #
 
-        available_name_width = width - 16
+        reserved = 16 + (len(count_label) + 1 if count_label else 0)
+        available_name_width = width - reserved
 
         if len(name) > available_name_width:
 
             name = (
-                name[:available_name_width - 1]
+                name[:max(1, available_name_width - 1)]
                 + "…"
             )
 
@@ -293,13 +375,12 @@ def print_menu_box(
             f"{YELLOW}{number:>3}{RESET}"
         )
 
-        indicator_text = indicator
-
         used_width = (
             3
             + 3
             + len(name)
             + 3
+            + (len(count_label) + 1 if count_label else 0)
             + 1
         )
 
@@ -308,6 +389,8 @@ def print_menu_box(
             width - 2 - used_width
         )
 
+        count_segment = f"{count_label} " if count_label else ""
+
         print(
             f"{BLUE}{BOX_VERTICAL}{RESET}"
             f"   "
@@ -315,7 +398,8 @@ def print_menu_box(
             f"   "
             f"{WHITE}{name}{RESET}"
             f"{' ' * padding}"
-            f"{indicator_text}"
+            f"{count_segment}"
+            f"{indicator}"
             f"  "
             f"{BLUE}{BOX_VERTICAL}{RESET}"
         )
@@ -344,6 +428,33 @@ def print_menu_box(
 
 
 # ============================================================
+# Footer
+# ============================================================
+
+
+def print_footer(show_back: bool, show_search_hint: bool) -> None:
+
+    if show_back:
+        print(
+            f"  {DIM}0{RESET}"
+            f"     Back"
+        )
+
+    if show_search_hint:
+        print(
+            f"  {DIM}text{RESET}"
+            f"  Filter this menu"
+        )
+
+    print(
+        f"  {DIM}exit{RESET}"
+        f"  Exit"
+    )
+
+    print()
+
+
+# ============================================================
 # Main menu
 # ============================================================
 
@@ -353,20 +464,9 @@ def show_main_menu(
 ) -> None:
 
     clear_screen()
-
     print_header()
-
-    print_menu_box(
-        "Main Menu",
-        categories
-    )
-
-    print(
-        f"  {DIM}exit{RESET}"
-        f"  Exit"
-    )
-
-    print()
+    print_menu_box("Main Menu", categories)
+    print_footer(show_back=False, show_search_hint=len(categories) > 8)
 
 
 # ============================================================
@@ -381,28 +481,34 @@ def show_menu(
 ) -> None:
 
     clear_screen()
-
     print_header()
 
     if path:
         print_breadcrumb(path)
 
-    print_menu_box(
-        title,
-        items
-    )
+    print_menu_box(title, items)
+    print_footer(show_back=True, show_search_hint=len(items) > 8)
 
+
+# ============================================================
+# Filtering
+# ============================================================
+
+
+def filter_items(items: list[dict], query: str) -> list[dict]:
+    query = query.lower()
+    return [item for item in items if query in item["name"].lower()]
+
+
+def show_no_matches(query: str) -> None:
     print(
-        f"  {DIM}0{RESET}"
-        f"     Back"
+        f"\n  {YELLOW}"
+        f"No items match \"{query}\"."
+        f"{RESET}"
     )
-
-    print(
-        f"  {DIM}exit{RESET}"
-        f"  Exit"
+    input(
+        f"\n{DIM}Press Enter to continue...{RESET}"
     )
-
-    print()
 
 
 # ============================================================
@@ -445,11 +551,34 @@ def build_runner_environment(
 # ============================================================
 
 
+def show_launch_status(program_name: str) -> None:
+    print(
+        f"\n  {CYAN}▶ Launching {program_name}...{RESET}\n"
+    )
+
+
 def run_runner(
-    runner: str,
+    runner: str | None,
     program_name: str,
     *configs: dict
 ) -> None:
+
+    # --------------------------------------------------------
+    # Missing "runner" key in configuration
+    # --------------------------------------------------------
+
+    if not runner:
+
+        print(
+            f"\n{RED}{BOLD}✗ No runner configured for "
+            f"{program_name}{RESET}"
+        )
+
+        input(
+            f"\n{DIM}Press Enter to continue...{RESET}"
+        )
+
+        return
 
     runner_path = (
         RUNNERS_DIR / runner
@@ -532,10 +661,29 @@ def run_runner(
     # Run runner
     # --------------------------------------------------------
 
-    result = subprocess.run(
-        [str(runner_path)],
-        env=environment
-    )
+    show_launch_status(program_name)
+
+    try:
+        result = subprocess.run(
+            [str(runner_path)],
+            env=environment
+        )
+    except OSError as error:
+
+        print(
+            f"\n{RED}{BOLD}✗ Failed to start "
+            f"{program_name}{RESET}"
+        )
+
+        print(
+            f"  {DIM}{error}{RESET}"
+        )
+
+        input(
+            f"\n{DIM}Press Enter to continue...{RESET}"
+        )
+
+        return
 
     # --------------------------------------------------------
     # Runner failure
@@ -588,7 +736,7 @@ def launch_application(
     if not versions:
 
         run_runner(
-            application["runner"],
+            application.get("runner"),
             application["name"],
             application
         )
@@ -604,7 +752,7 @@ def launch_application(
         version = versions[0]
 
         run_runner(
-            version["runner"],
+            version.get("runner"),
             (
                 f"{application['name']} "
                 f"{version['name']}"
@@ -619,11 +767,14 @@ def launch_application(
     # Multiple versions
     # --------------------------------------------------------
 
+    active_versions = versions
+    query = ""
+
     while True:
 
         show_menu(
-            application["name"],
-            versions,
+            application["name"] + (f" — \"{query}\"" if query else ""),
+            active_versions,
             path + [
                 application["name"]
             ]
@@ -643,73 +794,88 @@ def launch_application(
         # ----------------------------------------------------
 
         if choice == "0":
+            if query:
+                # First "0" clears an active filter, second
+                # "0" leaves the version menu entirely.
+                active_versions = versions
+                query = ""
+                continue
             return
 
         # ----------------------------------------------------
-        # Invalid input
+        # Numeric selection
         # ----------------------------------------------------
 
-        if not choice.isdigit():
+        if choice.isdigit():
+
+            index = int(choice)
+
+            if not 1 <= index <= len(active_versions):
+                continue
+
+            version = active_versions[index - 1]
+
+            run_runner(
+                version.get("runner"),
+                (
+                    f"{application['name']} "
+                    f"{version['name']}"
+                ),
+                application,
+                version
+            )
+
+            # IMPORTANT:
+            #
+            # Do not return here.
+            #
+            # After the runner exits, remain in the
+            # version-selection menu.
+
             continue
 
-        index = int(choice)
+        # ----------------------------------------------------
+        # Text: filter the version list
+        # ----------------------------------------------------
 
-        if not 1 <= index <= len(versions):
+        query = choice
+        matches = filter_items(versions, query)
+
+        if not matches:
+            show_no_matches(query)
+            query = ""
+            active_versions = versions
             continue
 
-        # ----------------------------------------------------
-        # Launch version
-        # ----------------------------------------------------
-
-        version = versions[index - 1]
-
-        run_runner(
-            version["runner"],
-            (
-                f"{application['name']} "
-                f"{version['name']}"
-            ),
-            application,
-            version
-        )
-
-        # IMPORTANT:
-        #
-        # Do not return here.
-        #
-        # After the runner exits, remain in the
-        # version-selection menu.
+        active_versions = matches
 
 
 # ============================================================
-# Group
+# Container (category or group — same shape, handled once)
 # ============================================================
 
 
-def open_group(
-    group: dict,
+def open_container(
+    container: dict,
     parent_path: list[str]
 ) -> None:
 
+    base_applications = container.get("applications", [])
+    base_groups = container.get("groups", [])
+    base_items = base_applications + base_groups
+
+    active_items = base_items
+    query = ""
+
     while True:
 
-        applications = group.get(
-            "applications",
-            []
-        )
-
-        groups = group.get(
-            "groups",
-            []
-        )
-
-        items = applications + groups
+        title = container["name"] + (f" — \"{query}\"" if query else "")
 
         show_menu(
-            group["name"],
-            items,
+            title,
+            active_items,
             parent_path + [
-                group["name"]
+                container["name"]
             ]
         )
 
@@ -727,131 +893,62 @@ def open_group(
         # ----------------------------------------------------
 
         if choice == "0":
+            if query:
+                active_items = base_items
+                query = ""
+                continue
             return
 
         # ----------------------------------------------------
-        # Invalid input
+        # Numeric selection
         # ----------------------------------------------------
 
-        if not choice.isdigit():
+        if choice.isdigit():
+
+            index = int(choice)
+
+            if not 1 <= index <= len(active_items):
+                continue
+
+            item = active_items[index - 1]
+
+            # Whether an item is a "group" is determined by
+            # identity against the original groups list, not
+            # by structural equality, so two groups can never
+            # be confused with each other.
+            is_group = any(item is group for group in base_groups)
+
+            if is_group:
+                open_container(
+                    item,
+                    parent_path + [
+                        container["name"]
+                    ]
+                )
+            else:
+                launch_application(
+                    item,
+                    parent_path + [
+                        container["name"]
+                    ]
+                )
+
             continue
 
-        index = int(choice)
+        # ----------------------------------------------------
+        # Text: filter this menu
+        # ----------------------------------------------------
 
-        if not 1 <= index <= len(items):
+        query = choice
+        matches = filter_items(base_items, query)
+
+        if not matches:
+            show_no_matches(query)
+            query = ""
+            active_items = base_items
             continue
 
-        item = items[index - 1]
-
-        # ----------------------------------------------------
-        # Nested group
-        # ----------------------------------------------------
-
-        if item in groups:
-            open_group(
-                item,
-                parent_path + [
-                    group["name"]
-                ]
-            )
-
-        # ----------------------------------------------------
-        # Application
-        # ----------------------------------------------------
-
-        else:
-            launch_application(
-                item,
-                parent_path + [
-                    group["name"]
-                ]
-            )
-
-
-# ============================================================
-# Category
-# ============================================================
-
-
-def open_category(
-    category: dict,
-    parent_path: list[str]
-) -> None:
-
-    while True:
-        applications = category.get(
-            "applications",
-            []
-        )
-
-        groups = category.get(
-            "groups",
-            []
-        )
-
-        items = applications + groups
-
-        show_menu(
-            category["name"],
-            items,
-            parent_path + [
-                category["name"]
-            ]
-        )
-
-        choice = get_choice()
-
-        # ----------------------------------------------------
-        # Exit
-        # ----------------------------------------------------
-
-        if choice.lower() == "exit":
-            raise ExitApplication
-
-        # ----------------------------------------------------
-        # Back
-        # ----------------------------------------------------
-
-        if choice == "0":
-            return
-
-        # ----------------------------------------------------
-        # Invalid input
-        # ----------------------------------------------------
-
-        if not choice.isdigit():
-            continue
-
-        index = int(choice)
-
-        if not 1 <= index <= len(items):
-            continue
-
-        item = items[index - 1]
-
-        # ----------------------------------------------------
-        # Group
-        # ----------------------------------------------------
-
-        if item in groups:
-            open_group(
-                item,
-                parent_path + [
-                    category["name"]
-                ]
-            )
-
-        # ----------------------------------------------------
-        # Application
-        # ----------------------------------------------------
-
-        else:
-            launch_application(
-                item,
-                parent_path + [
-                    category["name"]
-                ]
-            )
+        active_items = matches
 
 
 # ============================================================
@@ -859,22 +956,48 @@ def open_category(
 # ============================================================
 
 
+def show_config_error(message: str) -> None:
+    clear_screen()
+    print_header()
+
+    print(
+        f"{RED}{BOLD}✗ Could not load configuration{RESET}"
+    )
+    print()
+    print(f"  {DIM}{message}{RESET}")
+    print()
+
+
 def main() -> None:
 
-    config = load_config()
+    try:
+        config = load_config()
+    except FileNotFoundError:
+        show_config_error(f"Config file not found: {CONFIG_FILE}")
+        sys.exit(1)
+    except json.JSONDecodeError as error:
+        show_config_error(f"Invalid JSON in {CONFIG_FILE.name}: {error}")
+        sys.exit(1)
 
     categories = config.get(
         "categories",
         []
     )
 
+    active_categories = categories
+    query = ""
+
     try:
 
         while True:
 
-            show_main_menu(
-                categories
-            )
+            clear_screen()
+            print_header()
+
+            title = "Main Menu" + (f" — \"{query}\"" if query else "")
+            print_menu_box(title, active_categories)
+            print_footer(show_back=bool(query),
+                         show_search_hint=len(categories) > 8)
 
             choice = get_choice()
 
@@ -886,25 +1009,48 @@ def main() -> None:
                 raise ExitApplication
 
             # ------------------------------------------------
-            # Invalid input
+            # Back (clears an active search)
             # ------------------------------------------------
 
-            if not choice.isdigit():
+            if choice == "0":
+                active_categories = categories
+                query = ""
                 continue
 
-            index = int(choice)
+            # ------------------------------------------------
+            # Numeric selection
+            # ------------------------------------------------
 
-            if not 1 <= index <= len(categories):
+            if choice.isdigit():
+
+                index = int(choice)
+
+                if not 1 <= index <= len(active_categories):
+                    continue
+
+                category = active_categories[index - 1]
+
+                open_container(
+                    category,
+                    []
+                )
+
                 continue
 
-            category = (
-                categories[index - 1]
-            )
+            # ------------------------------------------------
+            # Text: filter the main menu
+            # ------------------------------------------------
 
-            open_category(
-                category,
-                []
-            )
+            query = choice
+            matches = filter_items(categories, query)
+
+            if not matches:
+                show_no_matches(query)
+                query = ""
+                active_categories = categories
+                continue
+
+            active_categories = matches
 
     except ExitApplication:
 
