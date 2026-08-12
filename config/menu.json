@@ -43,6 +43,19 @@
                     ]
                 },
                 {
+                    "name": "Antigravity",
+                    "versions": [
+                        {
+                            "name": "Antigravity IDE",
+                            "runner": "antigravity/antigravityide.sh"
+                        },
+                        {
+                            "name": "Antigravity 2.0",
+                            "runner": "antigravity/antigravity2.0.sh"
+                        }
+                    ]
+                },
+                {
                     "name": "JetBrains IDE",
                     "versions": [
                         {
