@@ -1285,9 +1285,13 @@ def run_global_search(
         )
         print()
 
-        query = input(
-            f"{GREEN}{BOLD}Search:{RESET} "
-        ).strip()
+        try:
+            query = input(
+                f"{GREEN}{BOLD}Search:{RESET} "
+            ).strip()
+        except (KeyboardInterrupt, EOFError):
+            print()
+            raise ExitApplication
 
         if query.lower() == "exit":
             raise ExitApplication
