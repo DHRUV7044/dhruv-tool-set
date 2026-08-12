@@ -432,12 +432,22 @@ def print_menu_box(
 # ============================================================
 
 
-def print_footer(show_back: bool, show_search_hint: bool) -> None:
+def print_footer(
+    show_back: bool,
+    show_search_hint: bool,
+    show_global_search: bool = False
+) -> None:
 
     if show_back:
         print(
             f"  {DIM}0{RESET}"
             f"     Back"
+        )
+
+    if show_global_search:
+        print(
+            f"  {DIM}s{RESET}"
+            f"     Search"
         )
 
     if show_search_hint:
@@ -509,6 +519,122 @@ def show_no_matches(query: str) -> None:
     input(
         f"\n{DIM}Press Enter to continue...{RESET}"
     )
+
+
+# ============================================================
+# Global search
+#
+# Unlike filter_items() above (which only ever looks at the
+# menu currently on screen), this walks the ENTIRE
+# configuration tree once and produces a flat, searchable
+# index. It is purely a lookup layer: launching a result
+# always goes through the existing launch_version() /
+# launch_application() / open_container() functions, so there
+# is exactly one place that knows how to launch anything.
+# ============================================================
+
+
+def build_search_index(
+    categories: list[dict]
+) -> list[dict]:
+    """
+    Recursively flatten the menu tree into search entries.
+
+    Each entry is one of:
+
+      kind="container"    a category or group (opens a menu)
+      kind="application"  a version-less application (launches directly)
+      kind="version"      one specific version of an application
+                           (launches that version directly)
+
+    Every entry carries its own full display path, and the
+    "haystacks" it should be matched against — this is the
+    only place matching-relevant names are chosen, so adding a
+    new field to search against later means touching one spot.
+    """
+
+    index: list[dict] = []
+
+    def walk(
+        node: dict,
+        path: list[str]
+    ) -> None:
+
+        current_path = path + [node["name"]]
+
+        # A category or group is itself a search result: it
+        # opens into a submenu rather than launching anything.
+        if node.get("groups") or node.get("applications"):
+            index.append({
+                "kind": "container",
+                "display_name": node["name"],
+                "path": current_path,
+                "haystacks": [node["name"]],
+                "container": node,
+            })
+
+        for group in node.get("groups", []):
+            walk(group, current_path)
+
+        for application in node.get("applications", []):
+
+            versions = application.get("versions", [])
+            application_path = current_path + [application["name"]]
+
+            if not versions:
+                index.append({
+                    "kind": "application",
+                    "display_name": application["name"],
+                    "path": application_path,
+                    "haystacks": [application["name"]],
+                    "application": application,
+                })
+                continue
+
+            # Every version — even if there is only one — is
+            # indexed individually so it can be matched and
+            # launched on its own, per-version.
+            for version in versions:
+                index.append({
+                    "kind": "version",
+                    "display_name": (
+                        f"{application['name']} "
+                        f"{version['name']}"
+                    ),
+                    "path": application_path + [version["name"]],
+                    "haystacks": [
+                        application["name"],
+                        version["name"],
+                    ],
+                    "application": application,
+                    "version": version,
+                })
+
+    for category in categories:
+        walk(category, [])
+
+    return index
+
+
+def search_index(
+    index: list[dict],
+    query: str
+) -> list[dict]:
+
+    query = query.lower()
+
+    return [
+        entry
+        for entry in index
+        if any(
+            query in haystack.lower()
+            for haystack in entry["haystacks"]
+        )
+    ]
+
+
+def format_path(path: list[str]) -> str:
+    return f" {DIM}›{RESET} ".join(path)
 
 
 # ============================================================
@@ -719,6 +845,32 @@ def run_runner(
 # ============================================================
 
 
+def launch_version(
+    application: dict,
+    version: dict
+) -> None:
+    """
+    Launch one specific version of an application directly,
+    bypassing any version-selection menu.
+
+    This is the single place that knows how to launch a
+    version — used by launch_application() for the
+    single-version case and the version-menu loop, and reused
+    directly by global search so a matched version can be
+    launched without duplicating this logic.
+    """
+
+    run_runner(
+        version.get("runner"),
+        (
+            f"{application['name']} "
+            f"{version['name']}"
+        ),
+        application,
+        version
+    )
+
+
 def launch_application(
     application: dict,
     path: list[str]
@@ -749,16 +901,9 @@ def launch_application(
 
     if len(versions) == 1:
 
-        version = versions[0]
-
-        run_runner(
-            version.get("runner"),
-            (
-                f"{application['name']} "
-                f"{version['name']}"
-            ),
+        launch_version(
             application,
-            version
+            versions[0]
         )
 
         return
@@ -815,12 +960,7 @@ def launch_application(
 
             version = active_versions[index - 1]
 
-            run_runner(
-                version.get("runner"),
-                (
-                    f"{application['name']} "
-                    f"{version['name']}"
-                ),
+            launch_version(
                 application,
                 version
             )
@@ -952,6 +1092,231 @@ def open_container(
 
 
 # ============================================================
+# Global search UI
+# ============================================================
+
+
+def print_search_results_box(
+    matches: list[dict],
+    query: str
+) -> None:
+
+    width = get_ui_width()
+
+    title_text = f' SEARCH RESULTS FOR "{query}" '
+    max_title_width = width - 6
+
+    if len(title_text) > max_title_width:
+        title_text = (
+            f' SEARCH RESULTS FOR "{query[:max_title_width - 8]}…" '
+        )
+
+    remaining = width - 3 - len(title_text)
+
+    print(
+        f"{BLUE}{BOX_TOP_LEFT}"
+        f"{BOX_HORIZONTAL}"
+        f"{title_text}"
+        f"{BOX_HORIZONTAL * max(0, remaining)}"
+        f"{BOX_TOP_RIGHT}{RESET}"
+    )
+
+    print(
+        f"{BLUE}{BOX_VERTICAL}{RESET}"
+        f"{' ' * (width - 2)}"
+        f"{BLUE}{BOX_VERTICAL}{RESET}"
+    )
+
+    for index, entry in enumerate(matches, start=1):
+
+        name = entry["display_name"]
+        indicator = (
+            f"{CYAN}›{RESET}"
+            if entry["kind"] == "container"
+            else f"{DIM}●{RESET}"
+        )
+
+        available_name_width = width - 16
+
+        if len(name) > available_name_width:
+            name = (
+                name[:max(1, available_name_width - 1)]
+                + "…"
+            )
+
+        number_text = f"{YELLOW}{index:>3}{RESET}"
+
+        used_width = 3 + 3 + len(name) + 3 + 1
+        padding = max(1, width - 2 - used_width)
+
+        print(
+            f"{BLUE}{BOX_VERTICAL}{RESET}"
+            f"   "
+            f"{number_text}"
+            f"   "
+            f"{WHITE}{name}{RESET}"
+            f"{' ' * padding}"
+            f"{indicator}"
+            f"  "
+            f"{BLUE}{BOX_VERTICAL}{RESET}"
+        )
+
+        path_text = format_path(entry["path"])
+        path_visible_length = len(
+            " › ".join(entry["path"])
+        )
+        available_path_width = width - 10
+
+        if path_visible_length > available_path_width:
+            visible = " › ".join(entry["path"])
+            visible = (
+                visible[:max(1, available_path_width - 1)]
+                + "…"
+            )
+            path_text = f"{DIM}{visible}{RESET}"
+            path_visible_length = len(visible)
+
+        path_padding = max(
+            0,
+            width - 2 - 7 - path_visible_length
+        )
+
+        print(
+            f"{BLUE}{BOX_VERTICAL}{RESET}"
+            f"       "
+            f"{DIM}{path_text}{RESET}"
+            f"{' ' * path_padding}"
+            f"{BLUE}{BOX_VERTICAL}{RESET}"
+        )
+
+        print(
+            f"{BLUE}{BOX_VERTICAL}{RESET}"
+            f"{' ' * (width - 2)}"
+            f"{BLUE}{BOX_VERTICAL}{RESET}"
+        )
+
+    print(
+        f"{BLUE}{BOX_BOTTOM_LEFT}"
+        f"{BOX_HORIZONTAL * (width - 2)}"
+        f"{BOX_BOTTOM_RIGHT}{RESET}"
+    )
+
+    print()
+
+
+def show_search_results(
+    matches: list[dict],
+    query: str
+) -> None:
+    """
+    Displays one set of search results and lets the user
+    repeatedly launch results from it. Mirrors the
+    version-selection menu: launching something does not leave
+    this screen, so the user returns here once the runner
+    exits.
+    """
+
+    while True:
+
+        clear_screen()
+        print_header()
+        print_breadcrumb(["Search"])
+        print_search_results_box(matches, query)
+        print_footer(show_back=True, show_search_hint=False)
+
+        choice = get_choice()
+
+        if choice.lower() == "exit":
+            raise ExitApplication
+
+        if choice == "0":
+            return
+
+        if not choice.isdigit():
+            continue
+
+        index = int(choice)
+
+        if not 1 <= index <= len(matches):
+            continue
+
+        entry = matches[index - 1]
+
+        if entry["kind"] == "container":
+            open_container(
+                entry["container"],
+                entry["path"][:-1]
+            )
+        elif entry["kind"] == "version":
+            launch_version(
+                entry["application"],
+                entry["version"]
+            )
+        else:
+            launch_application(
+                entry["application"],
+                entry["path"][:-1]
+            )
+
+        # Stay on the search results after returning from
+        # whatever was just opened/launched.
+
+
+def run_global_search(
+    categories: list[dict]
+) -> None:
+    """
+    Entry point for global search, reached from the main menu
+    via "s". Builds the index once per search session and lets
+    the user run repeated queries from the same prompt.
+    """
+
+    index = build_search_index(categories)
+
+    while True:
+
+        clear_screen()
+        print_header()
+        print_breadcrumb(["Search"])
+
+        print(
+            f"  {DIM}Type a query and press Enter. "
+            f"0 or empty to go back.{RESET}"
+        )
+        print()
+
+        query = input(
+            f"{GREEN}{BOLD}Search:{RESET} "
+        ).strip()
+
+        if query.lower() == "exit":
+            raise ExitApplication
+
+        # An empty query (or explicit "0") returns to the main
+        # menu rather than matching everything.
+        if not query or query == "0":
+            return
+
+        matches = search_index(index, query)
+
+        if not matches:
+
+            print(
+                f"\n  {YELLOW}"
+                f"No results found for \"{query}\"."
+                f"{RESET}"
+            )
+
+            input(
+                f"\n{DIM}Press Enter to continue...{RESET}"
+            )
+
+            continue
+
+        show_search_results(matches, query)
+
+
+# ============================================================
 # Main
 # ============================================================
 
@@ -996,8 +1361,11 @@ def main() -> None:
 
             title = "Main Menu" + (f" — \"{query}\"" if query else "")
             print_menu_box(title, active_categories)
-            print_footer(show_back=bool(query),
-                         show_search_hint=len(categories) > 8)
+            print_footer(
+                show_back=bool(query),
+                show_search_hint=len(categories) > 8,
+                show_global_search=True
+            )
 
             choice = get_choice()
 
@@ -1007,6 +1375,17 @@ def main() -> None:
 
             if choice.lower() == "exit":
                 raise ExitApplication
+
+            # ------------------------------------------------
+            # Global search
+            #
+            # Reserved at the main menu only — inside a
+            # category/group, "s" is just ordinary filter text.
+            # ------------------------------------------------
+
+            if choice.lower() == "s":
+                run_global_search(categories)
+                continue
 
             # ------------------------------------------------
             # Back (clears an active search)
